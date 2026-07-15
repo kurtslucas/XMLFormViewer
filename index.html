@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&lt;/&gt;</text></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XML Form Viewer</title>
+<style>
+:root {
+  --bg-page: #f5f7fa; --bg-panel: #ffffff; --bg-muted: #f0f2f5;
+  --border-color: #d1d5db; --text-primary: #1f2937; --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af; --text-quaternary: #d1d5db;
+  --accent-blue: #2563eb; --accent-green: #16a34a; --accent-red: #dc2626;
+  --accent-orange: #ea580c; --accent-purple: #8b5cf6; --accent-amber: #d97706;
+  --font-sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono: "SF Mono","Fira Code","Cascadia Code",Consolas,monospace;
+  --radius-sm: 6px; --radius-md: 8px; --radius-lg: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #111827; --bg-panel: #1f2937; --bg-muted: #374151;
+    --border-color: #4b5563; --text-primary: #f9fafb; --text-secondary: #d1d5db;
+    --text-tertiary: #9ca3af; --text-quaternary: #6b7280;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); background: var(--bg-page); color: var(--text-primary); padding: 16px; min-height: 100vh; }
+.wrap { max-width: 1400px; margin: 0 auto; }
+.top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.top-bar h1 { font-size: 20px; font-weight: 600; }
+.top-bar h1 span { color: var(--accent-orange); }
+.btn { padding: 8px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-panel); color: var(--text-primary); cursor: pointer; font-family: inherit; font-size: 13px; transition: all 0.15s ease-out; }
+.btn:hover { background: var(--bg-muted); }
+.btn-primary { background: var(--text-primary); color: var(--bg-panel); border-color: var(--text-primary); }
+.btn-primary:hover { opacity: 0.85; }
+.btn-danger { color: var(--accent-red); border-color: var(--accent-red); }
+.btn-danger:hover { background: rgba(220,38,38,0.08); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-report { background: var(--accent-orange); color: #fff; border-color: var(--accent-orange); }
+.btn-report:hover { opacity: 0.85; background: var(--accent-orange); }
+.xml-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0; }
+.xml-tab { padding: 8px 16px; border: 1px solid var(--border-color); border-bottom: none; border-radius: var(--radius-md) var(--radius-md) 0 0; background: var(--bg-muted); cursor: pointer; font-size: 13px; position: relative; display: flex; align-items: center; gap: 8px; transition: all 0.15s ease-out; color: var(--text-secondary); max-width: 200px; }
+.xml-tab:hover { background: var(--bg-panel); color: var(--text-primary); }
+.xml-tab.active { background: var(--bg-panel); color: var(--text-primary); border-top: 3px solid var(--accent-orange); font-weight: 600; }
+.xml-tab .tab-close { opacity: 0; transition: opacity 0.15s; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; color: var(--text-tertiary); flex-shrink: 0; }
+.xml-tab:hover .tab-close { opacity: 1; }
+.tab-close:hover { background: rgba(220,38,38,0.12); color: var(--accent-red); }
+.add-tab-btn { padding: 8px 14px; border: 1px dashed var(--border-color); border-radius: var(--radius-md); background: transparent; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all 0.15s; margin-bottom: 1px; }
+.add-tab-btn:hover { border-color: var(--text-primary); color: var(--text-primary); }
+.tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; padding: 16px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-muted); }
+.sum-item { display: flex; flex-direction: column; gap: 3px; }
+.sum-label { font-size: 11px; color: var(--text-tertiary); letter-spacing: 0.02em; }
+.sum-value { font-size: 14px; font-weight: 600; word-break: break-word; }
+.sum-value.money { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.inner-tabs { display: flex; gap: 2px; margin-bottom: 0; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
+.inner-tab { padding: 10px 18px; border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--text-secondary); border-bottom: 2px solid transparent; transition: all 0.15s; font-family: inherit; }
+.inner-tab:hover { color: var(--text-primary); }
+.inner-tab.active { color: var(--text-primary); border-bottom-color: var(--accent-orange); font-weight: 600; }
+.inner-content { display: none; padding: 20px 0; }
+.inner-content.active { display: block; }
+.fieldset { border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; background: var(--bg-panel); }
+.fieldset-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); }
+.data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.data-item { display: flex; flex-direction: column; gap: 3px; }
+.data-label { font-size: 11px; color: var(--text-tertiary); letter-spacing: 0.02em; }
+.data-value { font-size: 13px; color: var(--text-primary); word-break: break-word; min-height: 20px; line-height: 1.4; }
+.data-value.null { color: var(--text-quaternary); font-style: italic; }
+.array-table { width: 100%; border-collapse: collapse; font-size: 13px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; }
+.array-table th, .array-table td { border: 1px solid var(--border-color); padding: 10px 12px; text-align: left; }
+.array-table th { background: var(--bg-muted); font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; }
+.array-table tr:hover { background: var(--bg-muted); }
+.array-table td .null { color: var(--text-quaternary); font-style: italic; }
+.array-table td .bool-true { color: var(--accent-green); font-weight: 600; }
+.array-table td .bool-false { color: var(--accent-red); font-weight: 600; }
+.array-table td .money { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-tertiary); }
+.empty-state svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: 0.35; stroke: currentColor; fill: none; stroke-width: 1.5; }
+.empty-state-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+.empty-state-sub { font-size: 14px; }
+.drop-zone { border: 2px dashed var(--border-color); border-radius: var(--radius-lg); padding: 32px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 16px; background: var(--bg-panel); }
+.drop-zone:hover, .drop-zone.dragover { border-color: var(--accent-orange); background: var(--bg-muted); }
+.drop-zone-text { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
+.drop-zone-sub { font-size: 13px; color: var(--text-tertiary); margin-top: 6px; }
+input[type="file"] { display: none; }
+.xml-input { width: 100%; min-height: 140px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 14px; font-family: var(--font-mono); font-size: 12px; resize: vertical; background: var(--bg-panel); color: var(--text-primary); line-height: 1.5; }
+.xml-input:focus { outline: none; border-color: var(--accent-orange); }
+.xml-input::placeholder { color: var(--text-quaternary); }
+.actions-row { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap; }
+.nested-object { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; background: var(--bg-panel); }
+.bool-true { color: var(--accent-green); font-weight: 600; }
+.bool-false { color: var(--accent-red); font-weight: 600; }
+.export-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 16px; }
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius-lg); background: var(--text-primary); color: var(--bg-panel); font-size: 13px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.15); opacity: 0; transform: translateY(12px); transition: all 0.3s ease; pointer-events: none; z-index: 1000; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.report-header { text-align: center; padding: 24px 16px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px; background: var(--bg-panel); border-radius: var(--radius-lg); }
+.report-header h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.report-header .report-meta { font-size: 12px; color: var(--text-tertiary); }
+.report-footer { text-align: center; padding: 20px; margin-top: 32px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-quaternary); }
+.export-actions { text-align: center; margin-bottom: 20px; }
+.stats-bar { display: flex; gap: 16px; font-size: 12px; color: var(--text-tertiary); margin-bottom: 12px; flex-wrap: wrap; }
+.stats-bar span { background: var(--bg-muted); padding: 4px 12px; border-radius: var(--radius-sm); }
+.attr-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; background: rgba(139,92,246,0.1); color: var(--accent-purple); padding: 2px 8px; border-radius: var(--radius-sm); font-family: var(--font-mono); }
+.attr-badge::before { content: "@"; font-weight: 700; }
+.text-badge { display: inline-block; font-size: 12px; color: var(--text-secondary); font-style: italic; }
+.tag-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; background: rgba(234,88,12,0.1); color: var(--accent-orange); padding: 1px 6px; border-radius: var(--radius-sm); font-family: var(--font-mono); text-transform: lowercase; }
+.tag-badge::before { content: "</>"; font-size: 9px; }
+@media (max-width: 640px) { .summary-bar { grid-template-columns: repeat(2, 1fr); } .data-grid { grid-template-columns: 1fr; } .top-bar { flex-direction: column; align-items: flex-start; } .xml-tabs { overflow-x: auto; flex-wrap: nowrap; } .xml-tab { white-space: nowrap; } }
+
+.nested-object, .fieldset { position: relative; cursor: pointer; transition: box-shadow 0.15s ease; }
+.nested-object:hover, .fieldset:hover { box-shadow: 0 0 0 2px var(--accent-orange); }
+.nested-object::after, .fieldset::after {
+  content: "Duplo clique = copiar | Ctrl + Duplo clique = nova aba";
+  position: absolute; top: 4px; right: 8px; font-size: 10px; color: var(--text-tertiary);
+  opacity: 0; transition: opacity 0.15s; pointer-events: none;
+  background: var(--bg-panel); padding: 2px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color); z-index: 10;
+}
+.nested-object:hover::after, .fieldset:hover::after { opacity: 1; }
+.drop-zone, .xml-input, .actions-row, .export-bar, .summary-bar, .inner-tabs, .stats-bar, .report-header, .report-footer, .empty-state, .modal-box, .toast, .data-item { cursor: default !important; }
+.drop-zone::after, .xml-input::after, .actions-row::after, .export-bar::after, .summary-bar::after, .inner-tabs::after, .stats-bar::after, .report-header::after, .report-footer::after, .empty-state::after, .modal-box::after, .toast::after, .data-item::after { display: none !important; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: all 0.2s ease; }
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal-box { background: var(--bg-panel); border-radius: var(--radius-lg); width: 90%; max-width: 90%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); transform: scale(0.95); transition: transform 0.2s ease; }
+.modal-overlay.active .modal-box { transform: scale(1); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
+.modal-header h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.modal-close { width: 32px; height: 32px; border: none; background: transparent; cursor: pointer; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); transition: all 0.15s; }
+.modal-close:hover { background: var(--bg-muted); color: var(--text-primary); }
+.modal-body { flex: 1; overflow: auto; padding: 0; }
+.modal-footer { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border-color); justify-content: flex-end; }
+.xml-code { margin: 0; padding: 20px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; white-space: pre; background: #1e1e2e; color: #cdd6f4; min-height: 200px; display: inline-block; min-width: 100%; }
+.xml-code .tag { color: #f38ba8; }
+.xml-code .attr { color: #fab387; }
+.xml-code .attr-val { color: #a6e3a1; }
+.xml-code .text { color: #cdd6f4; }
+.xml-code .comment { color: #6c7086; font-style: italic; }
+.xml-code .pi { color: #89b4fa; }
+
+/* NOVO: estilos para campos simples achatados */
+.flat-field { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color); }
+.flat-field:last-child { border-bottom: none; }
+.flat-label { font-size: 12px; color: var(--text-tertiary); min-width: 140px; flex-shrink: 0; }
+.flat-value { font-size: 13px; color: var(--text-primary); font-weight: 500; word-break: break-word; }
+.flat-attrs { display: flex; gap: 4px; flex-wrap: wrap; }
+.inline-attr { font-size: 10px; background: rgba(139,92,246,0.08); color: var(--accent-purple); padding: 1px 6px; border-radius: var(--radius-sm); font-family: var(--font-mono); }
+.inline-attr::before { content: "@"; font-weight: 700; }
+.compact-list { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px 16px; background: var(--bg-panel); margin-bottom: 12px; }
+.compact-list-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 6px; }
+
+/* XML Syntax Highlighting */
+.xml-viewer { margin: 0; padding: 20px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; background: #1e1e2e; color: #cdd6f4; border-radius: var(--radius-lg); overflow-x: auto; white-space: pre; }
+.xml-viewer .xml-tag { color: #f38ba8; }
+.xml-viewer .xml-attr { color: #fab387; }
+.xml-viewer .xml-attr-val { color: #a6e3a1; }
+.xml-viewer .xml-text { color: #cdd6f4; }
+.xml-viewer .xml-comment { color: #6c7086; font-style: italic; }
+.xml-viewer .xml-pi { color: #89b4fa; }
+.xml-viewer .line-num { color: #45475a; display: inline-block; width: 32px; text-align: right; margin-right: 12px; user-select: none; }
+</style>
+<base target="_blank">
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="top-bar">
+    <h1><span>&lt;/&gt;</span> XML Form Viewer</h1>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-sm" onclick="exportAll()">Exportar todos</button>
+      <button class="btn btn-danger btn-sm" onclick="clearAll()">Limpar tudo</button>
+    </div>
+  </div>
+  <div class="xml-tabs" id="xmlTabs"></div>
+  <div id="xmlContainer"></div>
+  <div class="empty-state" id="emptyState">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    <div class="empty-state-title">Nenhum XML carregado</div>
+    <div class="empty-state-sub">Clique em "+ Novo XML" para adicionar ou arraste um arquivo.</div>
+  </div>
+  <div style="border-top:1px solid var(--border-color);margin-top:32px;padding-top:14px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--text-quaternary);">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+    <span>Dados armazenados apenas no navegador deste dispositivo</span>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="xmlModal" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>👁 Visualizar JSON</h3>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <pre class="xml-code" id="modalXmlContent"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="copyModalXML()">📋 Copiar</button>
+      <button class="btn btn-primary btn-sm" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOVO: Modal para Visualizar XML Original -->
+<div class="modal-overlay" id="rawXmlModal" onclick="closeRawXmlModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>👁 Visualizar XML Original</h3>
+      <button class="modal-close" onclick="closeRawXmlModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;padding:0 20px;">
+        <span id="rawXmlStats" style="font-size:12px;color:var(--text-secondary);"></span>
+        <button class="btn btn-sm" onclick="copyModalRawXML()" style="margin-left:auto;">📋 Copiar XML</button>
+      </div>
+      <pre class="xml-viewer" id="modalRawXmlContent"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary btn-sm" onclick="closeRawXmlModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var STORAGE_KEY = 'xml_viewer_docs_v2';
+var STATE_KEY = 'xml_viewer_state_v2';
+var docs = [];
+var activeDocId = null;
+var activeInnerTabs = {};
+var currentModalXML = '';
+
+function escapeHtml(t) {
+  if (t === null || t === undefined) return '';
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+function genId() { return 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+function getDocLabel(o) {
+  if (o._fileName) return o._fileName;
+  if (o._rootTag) return o._rootTag;
+  return 'XML ' + o._id.slice(-6);
+}
+
+function fmtVal(v, key) {
+  if (v === null || v === undefined) return '<span class="data-value null">null</span>';
+  if (typeof v === 'boolean') return '<span class="data-value">' + v + '</span>';
+  return '<span class="data-value">' + escapeHtml(String(v)) + '</span>';
+}
+
+function loadDocs() {
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) docs = JSON.parse(raw);
+  } catch(e) { docs = []; }
+  try {
+    var stateRaw = localStorage.getItem(STATE_KEY);
+    if (stateRaw) {
+      var state = JSON.parse(stateRaw);
+      if (state.activeDocId) activeDocId = state.activeDocId;
+      if (state.activeInnerTabs) activeInnerTabs = state.activeInnerTabs;
+    }
+  } catch(e) {}
+  renderTabs();
+  if (docs.length > 0 && !activeDocId) activeDocId = docs[0]._id;
+  if (activeDocId && !docs.some(function(d) { return d._id === activeDocId; })) {
+    activeDocId = docs.length ? docs[0]._id : null;
+  }
+  renderContent();
+}
+
+function saveDocs() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(docs)); } catch(e) {}
+}
+
+function saveState() {
+  try {
+    var state = { activeDocId: activeDocId, activeInnerTabs: activeInnerTabs };
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function renderTabs() {
+  var container = document.getElementById('xmlTabs');
+  var html = '';
+  docs.forEach(function(d) {
+    var label = getDocLabel(d);
+    var isActive = d._id === activeDocId;
+    html += '<div class="xml-tab ' + (isActive ? 'active' : '') + '" data-id="' + d._id + '" onclick="switchDoc(' + "'" + d._id + "'" + ')">' +
+      '<span class="tab-label">' + escapeHtml(label) + '</span>' +
+      '<span class="tab-close" onclick="event.stopPropagation();removeDoc(' + "'" + d._id + "'" + ')">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
+      '</span></div>';
+  });
+  html += '<button class="add-tab-btn" onclick="showAddPanel()">+ Novo XML</button>';
+  container.innerHTML = html;
+  var empty = document.getElementById('emptyState');
+  empty.style.display = docs.length > 0 ? 'none' : 'block';
+}
+
+function switchDoc(id) {
+  activeDocId = id;
+  saveState();
+  renderTabs();
+  renderContent();
+}
+
+function removeDoc(id) {
+  docs = docs.filter(function(d) { return d._id !== id; });
+  if (activeDocId === id) activeDocId = docs.length ? docs[0]._id : null;
+  if (activeInnerTabs[id]) delete activeInnerTabs[id];
+  saveDocs();
+  saveState();
+  renderTabs();
+  renderContent();
+  showToast('XML removido');
+}
+
+function showAddPanel() {
+  activeDocId = '__new__';
+  renderTabs();
+  renderContent();
+}
+
+function clearAll() {
+  if (!confirm('Tem certeza que deseja remover TODOS os XMLs?')) return;
+  docs = [];
+  activeDocId = null;
+  activeInnerTabs = {};
+  saveDocs();
+  saveState();
+  renderTabs();
+  renderContent();
+  showToast('Todos os XMLs removidos');
+}
+
+// ===== PARSER XML =====
+
+
+
+// NOVO: formata XML com indentação correta (estilo Notepad++)
+function formatXML(xml) {
+  // Passo 1: Remover toda indentação e quebras existentes (minificar)
+  xml = xml.replace(/>\s+</g, '><');
+  xml = xml.replace(/\s+/g, ' ');
+  xml = xml.replace(/> </g, '><');
+  xml = xml.trim();
+
+  // Passo 2: Quebrar linhas estrategicamente
+  // Entre ><
+  xml = xml.replace(/(>)(<)/g, '$1\n$2');
+
+  // Passo 3: Indentar baseado na profundidade
+  var formatted = '';
+  var pad = 0;
+  var nodes = xml.split('\n');
+
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i].trim();
+    if (!node) continue;
+
+    var indent = '';
+
+    // Se é tag de fechamento, reduz indent ANTES
+    if (/^<\/[^>]+>/.test(node)) {
+      pad = Math.max(0, pad - 1);
+    }
+
+    // Monta indentação
+    for (var j = 0; j < pad; j++) indent += '  ';
+
+    // Se é tag de abertura (não self-closing e não fechamento), aumenta indent DEPOIS
+    if (/^<[^/][^>]*>/.test(node) && !/^<[^>]+\/>/.test(node) && !/^<[^>]+>.*<\/[^>]+>/.test(node)) {
+      pad += 1;
+    }
+
+    formatted += indent + node + '\n';
+  }
+
+  return formatted.trim();
+}
+
+// Syntax highlight para XML
+function highlightXMLString(xmlText) {
+  var escaped = escapeHtml(xmlText);
+  // Comentários XML
+  escaped = escaped.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="xml-comment">$1</span>');
+  // Processing instructions
+  escaped = escaped.replace(/(&lt;\?[\s\S]*?\?&gt;)/g, '<span class="xml-pi">$1</span>');
+  // Tags de fechamento
+  escaped = escaped.replace(/(&lt;\/)([\w:]+)(&gt;)/g, '<span class="xml-tag">$1$2$3</span>');
+  // Tags de abertura (com ou sem atributos)
+  escaped = escaped.replace(/(&lt;)([\w:]+)(\s*)([\s\S]*?)(\/?&gt;)/g, function(match, lt, tag, sp, attrs, end) {
+    var attrHighlighted = attrs.replace(/([\w:]+)(=)("[^"]*")/g, '<span class="xml-attr">$1</span>$2<span class="xml-attr-val">$3</span>');
+    return '<span class="xml-tag">' + lt + tag + '</span>' + sp + attrHighlighted + '<span class="xml-tag">' + end + '</span>';
+  });
+  return escaped;
+}
+
+// Adicionar números de linha
+function addLineNumbers(html) {
+  var lines = html.split('\n');
+  return lines.map(function(line, i) {
+    return '<span class="line-num">' + (i + 1) + '</span>' + line;
+  }).join('\n');
+}
+
+function parseXMLString(xmlText) {
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(xmlText, "application/xml");
+  var errorNode = doc.querySelector("parsererror");
+  if (errorNode) {
+    throw new Error("XML invalido: " + errorNode.textContent.trim().slice(0, 200));
+  }
+  var raw = xmlNodeToObject(doc.documentElement);
+  return flattenSimpleNodes(raw);
+}
+
+// NOVO: achata tags que so tem #text (e atributos) em valores simples
+function flattenSimpleNodes(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(flattenSimpleNodes);
+
+  var result = {};
+  var keys = Object.keys(obj);
+  var hasText = keys.indexOf('#text') !== -1;
+  var attrKeys = keys.filter(function(k) { return k.charAt(0) === '@'; });
+  var childKeys = keys.filter(function(k) { return k.charAt(0) !== '@' && k !== '#text'; });
+
+  // Se so tem #text (e atributos), retorna o texto diretamente
+  if (hasText && childKeys.length === 0) {
+    if (attrKeys.length === 0) {
+      return obj['#text'];
+    }
+    result['#text'] = obj['#text'];
+    attrKeys.forEach(function(k) { result[k] = obj[k]; });
+    result._isSimple = true;
+    return result;
+  }
+
+  keys.forEach(function(k) {
+    if (k === '#text') {
+      result[k] = obj[k];
+    } else {
+      result[k] = flattenSimpleNodes(obj[k]);
+    }
+  });
+  return result;
+}
+
+function xmlNodeToObject(node) {
+  var obj = {};
+  if (node.attributes && node.attributes.length > 0) {
+    for (var i = 0; i < node.attributes.length; i++) {
+      var attr = node.attributes[i];
+      obj['@' + attr.name] = attr.value;
+    }
+  }
+  var children = Array.from(node.children);
+  if (children.length === 0) {
+    var text = node.textContent.trim();
+    if (text) obj['#text'] = text;
+  } else {
+    children.forEach(function(child) {
+      var childObj = xmlNodeToObject(child);
+      var tagName = child.tagName;
+      if (obj[tagName] !== undefined) {
+        if (!Array.isArray(obj[tagName])) obj[tagName] = [obj[tagName]];
+        obj[tagName].push(childObj);
+      } else {
+        obj[tagName] = childObj;
+      }
+    });
+  }
+  return obj;
+}
+
+// ===== ADICIONAR DOCUMENTO =====
+
+function addDocFromText() {
+  var el = document.getElementById('xmlInput');
+  var text = el.value.trim();
+  if (!text) return;
+  try {
+    var data = parseXMLString(text);
+    var rootTag = text.match(/<(\w+)/);
+    var newDoc = {};
+    for (var k in data) { newDoc[k] = data[k]; }
+    newDoc._id = genId();
+    newDoc._rootTag = rootTag ? rootTag[1] : 'xml';
+    newDoc._rawXML = text;  // NOVO: guarda XML original
+    docs.push(newDoc);
+    activeDocId = newDoc._id;
+    saveDocs();
+    saveState();
+    renderTabs();
+    renderContent();
+    showToast('XML carregado com sucesso!');
+  } catch(e) { alert('Erro ao parsear XML: ' + e.message); }
+}
+
+function addDocFromFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var text = e.target.result;
+      var data = parseXMLString(text);
+      var rootTag = text.match(/<(\w+)/);
+      var newDoc = {};
+      for (var k in data) { newDoc[k] = data[k]; }
+      newDoc._id = genId();
+      newDoc._fileName = file.name.replace(/\.xml$/i, '');
+      newDoc._rootTag = rootTag ? rootTag[1] : 'xml';
+      newDoc._rawXML = text;  // NOVO: guarda XML original
+      docs.push(newDoc);
+      activeDocId = newDoc._id;
+      saveDocs();
+      saveState();
+      renderTabs();
+      renderContent();
+      showToast('XML carregado com sucesso!');
+    } catch(err) { alert('Erro ao ler XML: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ===== EXPORTACAO =====
+
+function exportDoc(id) {
+  var d = docs.find(function(x) { return x._id === id; });
+  if (!d) return;
+  var clean = {};
+  for (var k in d) { if (k !== '_id' && k !== '_fileName' && k !== '_rootTag' && k !== '_isSimple' && k !== '_rawXML') clean[k] = d[k]; }
+  var blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (d._fileName || d._rootTag || 'xml') + '_' + d._id.slice(-6) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('XML exportado como JSON!');
+}
+
+function exportAll() {
+  if (docs.length === 0) { showToast('Nenhum XML para exportar'); return; }
+  var all = docs.map(function(d) {
+    var c = {};
+    for (var k in d) { if (k !== '_id' && k !== '_fileName' && k !== '_rootTag') c[k] = d[k]; }
+    return c;
+  });
+  var blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'xmls_exportados.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(docs.length + ' XMLs exportados!');
+}
+
+function copyXML(id) {
+  var d = docs.find(function(x) { return x._id === id; });
+  if (!d) return;
+  var clean = {};
+  for (var k in d) { if (k !== '_id' && k !== '_fileName' && k !== '_rootTag' && k !== '_isSimple' && k !== '_rawXML') clean[k] = d[k]; }
+  var jsonStr = JSON.stringify(clean, null, 2);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(jsonStr).then(function() {
+      showToast('XML copiado para a area de transferencia!');
+    }, function() { fallbackCopy(jsonStr); });
+  } else { fallbackCopy(jsonStr); }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    showToast('XML copiado para a area de transferencia!');
+  } catch(e) { showToast('Nao foi possivel copiar automaticamente'); }
+  document.body.removeChild(ta);
+}
+
+// ===== MODAL =====
+
+function openModal(id) {
+  var d = docs.find(function(x) { return x._id === id; });
+  if (!d) return;
+  var clean = {};
+  for (var k in d) { if (k !== '_id' && k !== '_fileName' && k !== '_rootTag' && k !== '_isSimple' && k !== '_rawXML') clean[k] = d[k]; }
+  currentModalXML = JSON.stringify(clean, null, 2);
+  var highlighted = highlightXML(currentModalXML);
+  document.getElementById('modalXmlContent').innerHTML = highlighted;
+  document.getElementById('xmlModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('xmlModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function copyModalXML() {
+  if (!currentModalXML) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(currentModalXML).then(function() {
+      showToast('XML copiado!');
+    }, function() { fallbackCopy(currentModalXML); });
+  } else { fallbackCopy(currentModalXML); }
+}
+
+function highlightXML(xmlStr) {
+  return escapeHtml(xmlStr)
+    .replace(/"([^"\\]*(\\.[^"\\]*)*)":/g, '<span class="tag">"$1":</span>')
+    .replace(/: "([^"\\]*(\\.[^"\\]*)*)"/g, ': <span class="attr-val">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="attr">$1</span>')
+    .replace(/: (true|false)/g, ': <span class="pi">$1</span>')
+    .replace(/: (null)/g, ': <span class="comment">$1</span>');
+}
+
+// ===== RENDERIZACAO PRINCIPAL =====
+
+function renderContent() {
+  var container = document.getElementById('xmlContainer');
+  if (activeDocId === '__new__') {
+    container.innerHTML =
+      '<div style="margin-bottom:12px;">' +
+        '<div class="drop-zone" id="dropZone">' +
+          '<div class="drop-zone-text">Arraste e solte um arquivo XML aqui</div>' +
+          '<div class="drop-zone-sub">ou cole o XML abaixo</div>' +
+        '</div>' +
+        '<input type="file" id="fileInput" accept=".xml" onchange="handleFileSelect(event)">' +
+        '<textarea class="xml-input" id="xmlInput" placeholder="Cole aqui o XML..."></textarea>' +
+        '<div class="actions-row">' +
+          '<button class="btn" onclick="document.getElementById(' + "'" + 'fileInput' + "'" + ').click()">Selecionar arquivo</button>' +
+          '<button class="btn btn-primary" onclick="addDocFromText()">Carregar XML</button>' +
+        '</div>' +
+      '</div>';
+    setupDropZone();
+    return;
+  }
+  var o = docs.find(function(x) { return x._id === activeDocId; });
+  if (!o) { container.innerHTML = ''; return; }
+  renderGeneric(o, container);
+  if (activeDocId && activeDocId !== '__new__' && activeInnerTabs[activeDocId]) {
+    var savedTab = activeInnerTabs[activeDocId];
+    var tabExists = document.querySelector('.inner-tab[data-tab="' + savedTab + '"]');
+    if (tabExists) switchInnerTab(savedTab);
+  }
+  setTimeout(function() { setupDoubleClick(); }, 0);
+}
+
+// ===== ESTATISTICAS =====
+
+function computeStats(obj, depth) {
+  depth = depth || 0;
+  var stats = { totalArrays: 0, totalObjects: 0, totalPrimitives: 0, totalAttributes: 0, totalTextNodes: 0, maxDepth: depth };
+  function traverse(o, d) {
+    stats.maxDepth = Math.max(stats.maxDepth, d);
+    if (Array.isArray(o)) {
+      stats.totalArrays++;
+      o.forEach(function(item) {
+        if (item !== null && typeof item === 'object') traverse(item, d + 1);
+        else stats.totalPrimitives++;
+      });
+    } else if (typeof o === 'object' && o !== null) {
+      stats.totalObjects++;
+      Object.keys(o).forEach(function(k) {
+        if (k === '_id' || k === '_fileName' || k === '_rootTag' || k === '_isSimple' || k === '_rawXML') return;
+        if (k.charAt(0) === '@') { stats.totalAttributes++; return; }
+        if (k === '#text') { stats.totalTextNodes++; stats.totalPrimitives++; return; }
+        var v = o[k];
+        if (v !== null && typeof v === 'object') traverse(v, d + 1);
+        else stats.totalPrimitives++;
+      });
+    } else {
+      stats.totalPrimitives++;
+    }
+  }
+  traverse(obj, depth);
+  return stats;
+}
+
+// ===== RENDERIZACAO GENERICA =====
+
+
+// NOVO: Modal para Visualizar XML Original
+var currentModalRawXML = '';
+
+function openXMLModal(id) {
+  var d = docs.find(function(x) { return x._id === id; });
+  if (!d) return;
+
+  var rawXML = d._rawXML || '';
+
+  // Formata o XML antes de exibir
+  if (rawXML) {
+    rawXML = formatXML(rawXML);
+  }
+  currentModalRawXML = rawXML;
+
+  var statsEl = document.getElementById('rawXmlStats');
+  if (statsEl) {
+    var lines = (rawXML.match(/\n/g) || []).length;
+    statsEl.textContent = lines + ' linhas · ' + rawXML.length.toLocaleString() + ' caracteres';
+  }
+
+  var contentEl = document.getElementById('modalRawXmlContent');
+  if (contentEl) {
+    if (!rawXML) {
+      contentEl.textContent = 'XML original não disponível para este documento.';
+    } else {
+      var highlighted = highlightXMLString(rawXML);
+      var withLineNumbers = addLineNumbers(highlighted);
+      contentEl.innerHTML = withLineNumbers;
+    }
+  }
+
+  document.getElementById('rawXmlModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRawXmlModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('rawXmlModal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function copyModalRawXML() {
+  if (!currentModalRawXML) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(currentModalRawXML).then(function() {
+      showToast('XML original copiado!');
+    }, function() { fallbackCopy(currentModalRawXML); });
+  } else { fallbackCopy(currentModalRawXML); }
+}
+
+function renderGeneric(o, container) {
+  var keys = Object.keys(o).filter(function(k) { return k !== '_id' && k !== '_fileName' && k !== '_rootTag' && k !== '_isSimple' && k !== '_rawXML'; });
+  var isArrayFirst = keys.length === 1 && Array.isArray(o[keys[0]]);
+  var stats = computeStats(o);
+  var statsHtml = '<div class="stats-bar">' +
+    '<span>📦 ' + keys.length + ' tags no raiz</span>' +
+    '<span>📁 ' + stats.totalObjects + ' objetos</span>' +
+    '<span>📂 ' + stats.totalArrays + ' arrays</span>' +
+    '<span>✏️ ' + stats.totalPrimitives + ' primitivos</span>' +
+    '<span>@ ' + stats.totalAttributes + ' atributos</span>' +
+    '<span>〰️ ' + stats.maxDepth + ' niveis</span>' +
+  '</div>';
+
+  var summaryHtml = '<div class="summary-bar">';
+  if (isArrayFirst) {
+    var arrKey = keys[0];
+    var arr = o[arrKey];
+    summaryHtml += '<div class="sum-item"><span class="sum-label">estrutura</span><span class="sum-value">Array: &lt;' + escapeHtml(arrKey) + '&gt;</span></div>';
+    summaryHtml += '<div class="sum-item"><span class="sum-label">itens</span><span class="sum-value">' + arr.length + '</span></div>';
+    if (arr.length > 0 && typeof arr[0] === 'object') {
+      var firstKeys = Object.keys(arr[0]).filter(function(k) { return k.charAt(0) !== '@' && k !== '#text'; });
+      summaryHtml += '<div class="sum-item"><span class="sum-label">tags filhas</span><span class="sum-value">' + firstKeys.join(', ') + '</span></div>';
+    }
+  } else {
+    var summaryFields = pickSummaryFields(o);
+    summaryFields.forEach(function(f) {
+      summaryHtml += '<div class="sum-item"><span class="sum-label">' + escapeHtml(f.key) + '</span>' + fmtVal(f.value, f.key) + '</div>';
+    });
+  }
+  summaryHtml += '</div>' +
+    '<div class="export-bar"><button class="btn btn-sm btn-report" onclick="exportReport(' + "'" + o._id + "'" + ')">📄 Exportar Relatorio</button><button class="btn btn-sm" onclick="openXMLModal(' + "'" + o._id + "'" + ')">👁 Visualizar XML</button><button class="btn btn-sm" onclick="openModal(' + "'" + o._id + "'" + ')">👁 Visualizar JSON</button><button class="btn btn-sm" onclick="copyXML(' + "'" + o._id + "'" + ')">📋 Copiar</button><button class="btn btn-sm" onclick="exportDoc(' + "'" + o._id + "'" + ')">Exportar JSON</button></div>';
+
+  var simpleFields = [], arrayFields = [], objectFields = [];
+  keys.forEach(function(k) {
+    classifyField(k, o[k], simpleFields, arrayFields, objectFields);
+  });
+
+  var tabDefs = [];
+  if (isArrayFirst) {
+    tabDefs.push({id: 'main_array', label: '&lt;' + escapeHtml(keys[0]) + '&gt; (' + o[keys[0]].length + ')'});
+  } else {
+    if (simpleFields.length) tabDefs.push({id: 'geral', label: 'Geral'});
+  }
+  objectFields.forEach(function(f) { tabDefs.push({id: 'obj_' + f.key, label: '&lt;' + f.key + '&gt;'}); });
+  if (!isArrayFirst) {
+    arrayFields.forEach(function(f) { tabDefs.push({id: 'arr_' + f.key, label: '&lt;' + f.key + '&gt; (' + f.value.length + ')'}); });
+  }
+
+  var firstTabId = tabDefs.length > 0 ? tabDefs[0].id : null;
+  var innerTabsHtml = '<div class="inner-tabs">';
+  tabDefs.forEach(function(t, i) {
+    innerTabsHtml += '<button class="inner-tab ' + (i===0?'active':'') + '" data-tab="' + t.id + '" onclick="switchInnerTab(' + "'" + t.id + "'" + ')">' + t.label + '</button>';
+  });
+  innerTabsHtml += '</div>';
+
+  var firstObjKey = null, firstArrKey = null;
+  var contentsHtml = '';
+
+  if (isArrayFirst) {
+    var arrKey = keys[0];
+    var arr = o[arrKey];
+    contentsHtml += '<div class="inner-content active" data-content="main_array">';
+    contentsHtml += renderGenericArray(arr, arrKey, arrKey);
+    contentsHtml += '</div>';
+    if (simpleFields.length || objectFields.length > 0) {
+      tabDefs.push({id: 'geral', label: 'Outros campos'});
+      contentsHtml += '<div class="inner-content" data-content="geral">';
+      contentsHtml += renderGenericFields(simpleFields, objectFields, '');
+      contentsHtml += '</div>';
+    }
+  } else {
+    if (tabDefs.length > 0 && tabDefs[0].id === 'geral') {
+      contentsHtml += '<div class="inner-content active" data-content="geral">';
+      contentsHtml += renderGenericFields(simpleFields, []);
+      contentsHtml += '</div>';
+    } else if (tabDefs.length > 0) {
+      contentsHtml += '<div class="inner-content active" data-content="' + tabDefs[0].id + '">';
+      if (tabDefs[0].id.indexOf('obj_') === 0) {
+        var objKey = tabDefs[0].id.replace('obj_', '');
+        firstObjKey = objKey;
+        var objField = objectFields.find(function(f) { return f.key === objKey; });
+        if (objField) {
+          contentsHtml += '<div class="fieldset" data-json-path="' + escapeHtml(objField.key) + '"><div class="fieldset-title"><span class="tag-badge">' + escapeHtml(objField.key) + '</span></div>';
+          contentsHtml += renderGenericObject(objField.value, objField.key, objField.key);
+          contentsHtml += '</div>';
+        }
+      } else if (tabDefs[0].id.indexOf('arr_') === 0) {
+        var arrKey2 = tabDefs[0].id.replace('arr_', '');
+        firstArrKey = arrKey2;
+        var arrField = arrayFields.find(function(f) { return f.key === arrKey2; });
+        if (arrField) {
+          contentsHtml += renderGenericArray(arrField.value, arrField.key, arrField.key);
+        }
+      }
+      contentsHtml += '</div>';
+    }
+  }
+
+  objectFields.forEach(function(f) {
+    if (firstObjKey && f.key === firstObjKey) return;
+    contentsHtml += '<div class="inner-content" data-content="obj_' + f.key + '">';
+    contentsHtml += '<div class="fieldset" data-json-path="' + escapeHtml(f.key) + '"><div class="fieldset-title"><span class="tag-badge">' + escapeHtml(f.key) + '</span></div>';
+    contentsHtml += renderGenericObject(f.value, f.key, f.key);
+    contentsHtml += '</div></div>';
+  });
+
+  if (!isArrayFirst) {
+    arrayFields.forEach(function(f) {
+      if (firstArrKey && f.key === firstArrKey) return;
+      contentsHtml += '<div class="inner-content" data-content="arr_' + f.key + '">';
+      contentsHtml += renderGenericArray(f.value, f.key, f.key);
+      contentsHtml += '</div>';
+    });
+  }
+
+  container.innerHTML = statsHtml + summaryHtml + innerTabsHtml + contentsHtml;
+}
+
+function classifyField(k, v, simpleFields, arrayFields, objectFields) {
+  if (k === '_isSimple') return;
+  if (v === null || v === undefined || typeof v === 'boolean' || typeof v === 'number' || typeof v === 'string') {
+    simpleFields.push({key: k, value: v});
+  } else if (Array.isArray(v)) {
+    if (v.length === 0) { simpleFields.push({key: k, value: '[] (vazio)'}); }
+    else { arrayFields.push({key: k, value: v}); }
+  } else if (typeof v === 'object') { objectFields.push({key: k, value: v}); }
+}
+
+// NOVO: verifica se um objeto eh "simples" (só #text e atributos)
+function isSimpleNode(v) {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  var keys = Object.keys(v).filter(function(k) { return k.charAt(0) !== '@' && k !== '_isSimple'; });
+  return keys.length === 1 && keys[0] === '#text';
+}
+
+function getSimpleValue(v) {
+  if (typeof v === 'object' && v !== null && !Array.isArray(v) && v['#text'] !== undefined) {
+    return v['#text'];
+  }
+  return v;
+}
+
+function getSimpleAttrs(v) {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return [];
+  var attrs = [];
+  Object.keys(v).forEach(function(k) {
+    if (k.charAt(0) === '@') attrs.push({name: k.slice(1), value: v[k]});
+  });
+  return attrs;
+}
+
+function renderGenericFields(simpleFields, objectFields, jsonPath) {
+  jsonPath = jsonPath || '';
+  var html = '';
+  if (simpleFields.length) {
+    html += '<div class="fieldset"><div class="fieldset-title">campos</div><div class="data-grid">';
+    simpleFields.forEach(function(f) {
+      var isAttr = f.key.charAt(0) === '@';
+      var isText = f.key === '#text';
+      var labelHtml = '';
+      if (isAttr) labelHtml = '<span class="attr-badge">' + escapeHtml(f.key.slice(1)) + '</span>';
+      else if (isText) labelHtml = '<span class="text-badge">#text</span>';
+      else labelHtml = escapeHtml(f.key);
+      html += '<div class="data-item"><span class="data-label">' + labelHtml + '</span>' + fmtVal(f.value, f.key) + '</div>';
+    });
+    html += '</div></div>';
+  }
+  if (objectFields.length) {
+    objectFields.forEach(function(f) {
+      var objPath = jsonPath ? jsonPath + '.' + f.key : f.key;
+      // Se for um no simples, renderiza como campo flat em vez de fieldset
+      if (isSimpleNode(f.value)) {
+        var val = getSimpleValue(f.value);
+        var attrs = getSimpleAttrs(f.value);
+        html += '<div class="compact-list" data-json-path="' + escapeHtml(objPath) + '">';
+        html += '<div class="compact-list-title"><span class="tag-badge">' + escapeHtml(f.key) + '</span></div>';
+        html += '<div class="flat-field">';
+        html += '<span class="flat-label">' + escapeHtml(f.key) + '</span>';
+        html += '<div style="display:flex;align-items:center;gap:8px;flex:1;">';
+        html += '<span class="flat-value">' + escapeHtml(String(val)) + '</span>';
+        if (attrs.length) {
+          html += '<div class="flat-attrs">';
+          attrs.forEach(function(a) {
+            html += '<span class="inline-attr">' + escapeHtml(a.name) + '=' + escapeHtml(a.value) + '</span>';
+          });
+          html += '</div>';
+        }
+        html += '</div></div></div>';
+      } else {
+        html += '<div class="fieldset" data-json-path="' + escapeHtml(objPath) + '"><div class="fieldset-title"><span class="tag-badge">' + escapeHtml(f.key) + '</span></div>';
+        html += renderGenericObject(f.value, f.key, objPath);
+        html += '</div>';
+      }
+    });
+  }
+  return html;
+}
+
+function renderGenericArray(arr, label, jsonPath) {
+  jsonPath = jsonPath || label;
+  if (!arr || arr.length === 0) {
+    return '<div class="empty-state">Nenhum item em &lt;' + escapeHtml(label) + '&gt;.</div>';
+  }
+  var html = '';
+  arr.forEach(function(item, idx) {
+    var itemPath = jsonPath + '.' + idx;
+    if (typeof item === 'object' && item !== null) {
+      var title = '';
+      if (item['#text']) title = String(item['#text']);
+      else if (item.name && typeof item.name === 'string') title = item.name;
+      else if (item.title && typeof item.title === 'string') title = item.title;
+      else if (item.id) title = 'id: ' + String(item.id);
+
+      html += '<div class="fieldset" data-json-path="' + escapeHtml(itemPath) + '"><div class="fieldset-title"><span class="tag-badge">' + escapeHtml(label) + '</span> ' + (idx+1);
+      if (title) html += ' — ' + escapeHtml(title);
+      html += '</div>';
+      html += renderGenericObject(item, label, itemPath);
+      html += '</div>';
+    } else {
+      html += '<div class="fieldset" data-json-path="' + escapeHtml(itemPath) + '"><div class="fieldset-title"><span class="tag-badge">' + escapeHtml(label) + '</span> ' + (idx+1) + '</div>';
+      html += '<div class="data-grid"><div class="data-item"><span class="data-label">valor</span>' + fmtVal(item, 'valor') + '</div></div>';
+      html += '</div>';
+    }
+  });
+  return html;
+}
+
+function renderGenericObject(obj, parentKey, jsonPath) {
+  jsonPath = jsonPath || parentKey;
+  var html = '<div class="data-grid">';
+  Object.keys(obj).forEach(function(k) {
+    var v = obj[k];
+    var propPath = jsonPath + '.' + k;
+    var isAttr = k.charAt(0) === '@';
+    var isText = k === '#text';
+
+    if (isAttr) {
+      html += '<div class="data-item"><span class="data-label"><span class="attr-badge">' + escapeHtml(k.slice(1)) + '</span></span>' + fmtVal(v, k) + '</div>';
+    } else if (isText) {
+      html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label"><span class="text-badge">#text</span></span>' + fmtVal(v, k) + '</div>';
+    } else if (v === null || v === undefined || typeof v === 'boolean' || typeof v === 'number' || typeof v === 'string') {
+      html += '<div class="data-item"><span class="data-label">' + escapeHtml(k) + '</span>' + fmtVal(v, k) + '</div>';
+    } else if (Array.isArray(v)) {
+      if (v.length === 0) {
+        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt;</span><span class="data-value null">[] (vazio)</span></div>';
+      } else if (v.every(function(item) { return item !== null && typeof item === 'object'; })) {
+        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt; (' + v.length + ' itens)</span>';
+        v.forEach(function(subItem, subIdx) {
+          var subTitle = subItem['#text'] || subItem.nome || subItem.name || subItem.title || subItem.id || subItem.codigo || ('Item ' + (subIdx + 1));
+          var subPath = propPath + '.' + subIdx;
+          html += '<div class="nested-object" data-json-path="' + escapeHtml(subPath) + '" style="margin-top:8px;">';
+          html += '<div class="fieldset-title" style="font-size:13px;padding-bottom:6px;margin-bottom:10px;"><span class="tag-badge">' + escapeHtml(k) + '</span> ' + escapeHtml(subTitle) + '</div>';
+          html += renderGenericObject(subItem, k, subPath);
+          html += '</div>';
+        });
+        html += '</div>';
+      } else if (v.every(function(item) { return item === null || typeof item !== 'object'; })) {
+        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt;</span><span class="data-value">' + escapeHtml(v.join(', ')) + '</span></div>';
+      } else {
+        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt; (' + v.length + ' itens)</span>';
+        v.forEach(function(subItem, subIdx) {
+          var subPath = propPath + '.' + subIdx;
+          if (subItem !== null && typeof subItem === 'object') {
+            html += '<div class="nested-object" data-json-path="' + escapeHtml(subPath) + '" style="margin-top:8px;">';
+            html += '<div class="fieldset-title" style="font-size:13px;padding-bottom:6px;margin-bottom:10px;"><span class="tag-badge">' + escapeHtml(k) + '</span> Item ' + (subIdx + 1) + '</div>';
+            html += renderGenericObject(subItem, k, subPath);
+            html += '</div>';
+          } else {
+            html += '<div class="data-item" style="margin-top:4px;"><span class="data-label">[' + subIdx + ']</span>' + fmtVal(subItem, k) + '</div>';
+          }
+        });
+        html += '</div>';
+      }
+    } else if (typeof v === 'object') {
+      // NOVO: se for no simples, renderiza como campo flat
+      if (isSimpleNode(v)) {
+        var val = getSimpleValue(v);
+        var attrs = getSimpleAttrs(v);
+        html += '<div class="data-item" style="grid-column:1/-1;">';
+        html += '<div class="flat-field" data-json-path="' + escapeHtml(propPath) + '">';
+        html += '<span class="flat-label">' + escapeHtml(k) + '</span>';
+        html += '<div style="display:flex;align-items:center;gap:8px;flex:1;">';
+        html += '<span class="flat-value">' + escapeHtml(String(val)) + '</span>';
+        if (attrs.length) {
+          html += '<div class="flat-attrs">';
+          attrs.forEach(function(a) {
+            html += '<span class="inline-attr">' + escapeHtml(a.name) + '=' + escapeHtml(a.value) + '</span>';
+          });
+          html += '</div>';
+        }
+        html += '</div></div></div>';
+      } else {
+        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt;</span>';
+        html += '<div class="nested-object" data-json-path="' + escapeHtml(propPath) + '">';
+        html += renderGenericObject(v, k, propPath);
+        html += '</div></div>';
+      }
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+function pickSummaryFields(o) {
+  var candidates = [];
+  var priorityKeys = ['id', 'name', 'title', 'status', 'total', 'amount', 'type', 'version', '#text'];
+  priorityKeys.forEach(function(pk) {
+    Object.keys(o).forEach(function(k) {
+      if (k === '_id' || k === '_fileName' || k === '_rootTag' || k === '_isSimple' || k === '_rawXML') return;
+      if (k.toLowerCase() === pk.toLowerCase() && o[k] !== null && o[k] !== undefined && typeof o[k] !== 'object') {
+        candidates.push({key: k, value: o[k]});
+      }
+    });
+  });
+  Object.keys(o).forEach(function(k) {
+    if (k === '_id' || k === '_fileName' || k === '_rootTag' || k === '_isSimple' || k === '_rawXML') return;
+    var already = candidates.some(function(c) { return c.key === k; });
+    if (!already && candidates.length < 8) {
+      var v = o[k];
+      if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+        candidates.push({key: k, value: v});
+      }
+    }
+  });
+  if (candidates.length === 0) {
+    var firstKey = Object.keys(o).find(function(k) { return k !== '_id' && k !== '_fileName' && k !== '_rootTag' && k !== '_isSimple' && k !== '_rawXML'; });
+    if (firstKey) {
+      var firstVal = o[firstKey];
+      if (Array.isArray(firstVal) && firstVal.length > 0 && typeof firstVal[0] === 'object') {
+        candidates = pickSummaryFields(firstVal[0]);
+        candidates.forEach(function(c) { c.key = firstKey + '[0].' + c.key; });
+      } else if (typeof firstVal === 'object' && firstVal !== null) {
+        candidates = pickSummaryFields(firstVal);
+        candidates.forEach(function(c) { c.key = firstKey + '.' + c.key; });
+      }
+    }
+  }
+  return candidates.slice(0, 8);
+}
+
+function switchInnerTab(tabId) {
+  document.querySelectorAll('.inner-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.inner-content').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.content === tabId);
+  });
+  if (activeDocId && activeDocId !== '__new__') {
+    activeInnerTabs[activeDocId] = tabId;
+    saveState();
+  }
+  setTimeout(function() { setupDoubleClick(); }, 0);
+}
+
+function setupDropZone() {
+  var dz = document.getElementById('dropZone');
+  if (!dz) return;
+  dz.addEventListener('click', function() { document.getElementById('fileInput').click(); });
+  ['dragenter','dragover'].forEach(function(e) {
+    dz.addEventListener(e, function(ev) { ev.preventDefault(); dz.classList.add('dragover'); });
+  });
+  ['dragleave','drop'].forEach(function(e) {
+    dz.addEventListener(e, function(ev) { ev.preventDefault(); dz.classList.remove('dragover'); });
+  });
+  dz.addEventListener('drop', function(ev) {
+    var files = ev.dataTransfer.files;
+    if (files.length) addDocFromFile(files[0]);
+  });
+}
+
+function handleFileSelect(e) {
+  var file = e.target.files[0];
+  if (file) addDocFromFile(file);
+}
+
+function exportReport(id) {
+  var o = docs.find(function(x) { return x._id === id; });
+  if (!o) return;
+  var originalActive = activeDocId;
+  activeDocId = id;
+  renderContent();
+  var container = document.getElementById('xmlContainer');
+  if (!container) { activeDocId = originalActive; renderContent(); return; }
+  var clone = container.cloneNode(true);
+  clone.querySelectorAll('.export-bar, .actions-row, .stats-bar').forEach(function(el) { el.remove(); });
+  clone.querySelectorAll('.inner-content').forEach(function(content) {
+    content.classList.remove('active');
+    content.style.display = '';
+  });
+  clone.querySelectorAll('.inner-tab').forEach(function(tab) {
+    tab.classList.remove('active');
+    tab.removeAttribute('onclick');
+  });
+  var firstTab = clone.querySelector('.inner-tab');
+  var firstContent = clone.querySelector('.inner-content');
+  if (firstTab) firstTab.classList.add('active');
+  if (firstContent) {
+    firstContent.classList.add('active');
+    firstContent.style.display = 'block';
+  }
+  var reportTitle = 'Relatorio XML — ' + getDocLabel(o);
+  var now = new Date().toISOString();
+  var cleanData = {};
+  for (var k in o) { if (k !== '_id' && k !== '_fileName' && k !== '_rootTag') cleanData[k] = o[k]; }
+  var jsonData = JSON.stringify(cleanData, null, 2);
+  var jsonBase64 = btoa(unescape(encodeURIComponent(jsonData)));
+  var css = ':root{--bg-page:#f5f7fa;--bg-panel:#fff;--bg-muted:#f0f2f5;--border-color:#d1d5db;--text-primary:#1f2937;--text-secondary:#6b7280;--text-tertiary:#9ca3af;--text-quaternary:#d1d5db;--accent-blue:#2563eb;--accent-green:#16a34a;--accent-red:#dc2626;--accent-orange:#ea580c;--accent-purple:#8b5cf6;--font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--font-mono:"SF Mono","Fira Code","Cascadia Code",Consolas,monospace;--radius-sm:6px;--radius-md:8px;--radius-lg:10px;}@media(prefers-color-scheme:dark){:root{--bg-page:#111827;--bg-panel:#1f2937;--bg-muted:#374151;--border-color:#4b5563;--text-primary:#f9fafb;--text-secondary:#d1d5db;--text-tertiary:#9ca3af;--text-quaternary:#6b7280;}}*{box-sizing:border-box;margin:0;padding:0;}body{font-family:var(--font-sans);background:var(--bg-page);color:var(--text-primary);padding:16px;min-height:100vh;}.wrap{max-width:1400px;margin:0 auto;}.report-header{text-align:center;padding:24px 16px;border-bottom:1px solid var(--border-color);margin-bottom:20px;background:var(--bg-panel);border-radius:var(--radius-lg);}.report-header h2{font-size:20px;font-weight:600;margin-bottom:6px;}.report-header .report-meta{font-size:12px;color:var(--text-tertiary);}.summary-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px;padding:16px;border:1px solid var(--border-color);border-radius:var(--radius-lg);background:var(--bg-muted);}.sum-item{display:flex;flex-direction:column;gap:3px;}.sum-label{font-size:11px;color:var(--text-tertiary);letter-spacing:0.02em;}.sum-value{font-size:14px;font-weight:600;word-break:break-word;}.sum-value.money{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}.inner-tabs{display:flex;gap:2px;margin-bottom:0;border-bottom:1px solid var(--border-color);flex-wrap:wrap;}.inner-tab{padding:10px 18px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text-secondary);border-bottom:2px solid transparent;transition:all 0.15s;font-family:inherit;}.inner-tab:hover{color:var(--text-primary);}.inner-tab.active{color:var(--text-primary);border-bottom-color:var(--accent-orange);font-weight:600;}.inner-content{display:none;padding:20px 0;}.inner-content.active{display:block;}.fieldset{border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px;background:var(--bg-panel);}.fieldset-title{font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border-color);}.data-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}.data-item{display:flex;flex-direction:column;gap:3px;}.data-label{font-size:11px;color:var(--text-tertiary);letter-spacing:0.02em;}.data-value{font-size:13px;color:var(--text-primary);word-break:break-word;min-height:20px;line-height:1.4;}.data-value.null{color:var(--text-quaternary);font-style:italic;}.data-value.mono{font-family:var(--font-mono);font-size:12px;}.data-value.money{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}.img-thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--border-color);}.array-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid var(--border-color);border-radius:var(--radius-lg);overflow:hidden;}.array-table th,.array-table td{border:1px solid var(--border-color);padding:10px 12px;text-align:left;}.array-table th{background:var(--bg-muted);font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:0.02em;}.array-table tr:hover{background:var(--bg-muted);}.array-table td .null{color:var(--text-quaternary);font-style:italic;}.array-table td .bool-true{color:var(--accent-green);font-weight:600;}.array-table td .bool-false{color:var(--accent-red);font-weight:600;}.array-table td .money{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}.nested-object{border:1px solid var(--border-color);border-radius:var(--radius-md);padding:16px;margin-bottom:12px;background:var(--bg-panel);}.bool-true{color:var(--accent-green);font-weight:600;}.bool-false{color:var(--accent-red);font-weight:600;}.empty-state{text-align:center;padding:40px 20px;color:var(--text-tertiary);font-style:italic;}.report-footer{text-align:center;padding:20px;margin-top:32px;border-top:1px solid var(--border-color);font-size:11px;color:var(--text-quaternary);}.btn{padding:8px 16px;border:1px solid var(--border-color);border-radius:var(--radius-md);background:var(--bg-panel);color:var(--text-primary);cursor:pointer;font-family:inherit;font-size:13px;text-decoration:none;display:inline-block;}.btn-primary{background:var(--text-primary);color:var(--bg-panel);border-color:var(--text-primary);}.export-actions{text-align:center;margin-bottom:20px;}@media(max-width:640px){.summary-bar{grid-template-columns:repeat(2,1fr);}.data-grid{grid-template-columns:1fr;}}';
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>' + escapeHtml(reportTitle) + '</title><style>' + css + '</style></head><body><div class="wrap"><div class="report-header"><h2>' + escapeHtml(reportTitle) + '</h2><div class="report-meta">Gerado em ' + now + ' via <a href="https://kurtslucas.github.io/XmlFormViewer/" target="_blank" style="color: inherit; text-decoration: none;">XML Form Viewer</a></div></div><div class="export-actions"><a class="btn btn-primary" href="data:application/json;base64,' + jsonBase64 + '" download="' + escapeHtml(getDocLabel(o)) + '.json">⬇ Exportar JSON</a></div>' + clone.innerHTML + '<div class="report-footer">Documento gerado para compartilhamento</div></div><script>function switchInnerTab(tabId){document.querySelectorAll(".inner-tab").forEach(function(t){t.classList.toggle("active",t.dataset.tab===tabId);});document.querySelectorAll(".inner-content").forEach(function(c){c.classList.toggle("active",c.dataset.content===tabId);if(c.dataset.content===tabId){c.style.display="block";}else{c.style.display="none";}});}document.querySelectorAll(".inner-tab").forEach(function(tab){tab.onclick=function(){switchInnerTab(this.dataset.tab);};});</scr' + 'ipt></body></html>';
+  activeDocId = originalActive;
+  renderContent();
+  var blob = new Blob([html], { type: 'text/html' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'relatorio_' + getDocLabel(o) + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Relatorio HTML exportado!');
+}
+
+// ===== DUPLA CLICAR PARA COPIAR JSON =====
+
+function setupDoubleClick() {
+  document.querySelectorAll('.nested-object[data-json-path], .fieldset[data-json-path]').forEach(function(el) {
+    el.removeEventListener('dblclick', handleDoubleClick);
+    el.addEventListener('dblclick', handleDoubleClick);
+  });
+}
+
+function handleDoubleClick(e) {
+  e.stopPropagation();
+  var el = this;
+  var path = el.getAttribute('data-json-path');
+  if (!path) return;
+
+  var doc = docs.find(function(d) { return d._id === activeDocId; });
+  if (!doc) return;
+
+  var cleanDoc = {};
+  for (var k in doc) { if (k !== '_id' && k !== '_fileName' && k !== '_rootTag') cleanDoc[k] = doc[k]; }
+
+  var value = getValueByPath(cleanDoc, path);
+  if (value === undefined) {
+    showToast('Nao foi possivel encontrar o JSON');
+    return;
+  }
+
+  var jsonStr = JSON.stringify(value, null, 2);
+
+  if (e.ctrlKey || e.metaKey) {
+    var newDoc = {};
+    for (var k in value) { newDoc[k] = value[k]; }
+    newDoc._id = genId();
+    newDoc._fileName = path;
+    docs.push(newDoc);
+    activeDocId = newDoc._id;
+    saveDocs();
+    saveState();
+    renderTabs();
+    renderContent();
+    showToast('📂 XML carregado em nova aba: ' + path);
+    return;
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(jsonStr).then(function() {
+      showToast('📋 JSON copiado: ' + path);
+    }, function() {
+      fallbackCopy(jsonStr);
+      showToast('📋 JSON copiado: ' + path);
+    });
+  } else {
+    fallbackCopy(jsonStr);
+    showToast('📋 JSON copiado: ' + path);
+  }
+}
+
+function getValueByPath(obj, path) {
+  var parts = path.split('.');
+  var current = obj;
+  for (var i = 0; i < parts.length; i++) {
+    if (current === null || current === undefined) return undefined;
+    var key = parts[i];
+    var idx = parseInt(key, 10);
+    if (!isNaN(idx) && Array.isArray(current)) {
+      current = current[idx];
+    } else {
+      current = current[key];
+    }
+  }
+  return current;
+}
+
+loadDocs();
+</script>
+</body>
+</html>
