@@ -1012,7 +1012,15 @@ function renderGenericObject(obj, parentKey, jsonPath) {
         });
         html += '</div>';
       } else if (v.every(function(item) { return item === null || typeof item !== 'object'; })) {
-        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt;</span><span class="data-value">' + escapeHtml(v.join(', ')) + '</span></div>';
+        html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt; (' + v.length + ' itens)</span>';
+        html += '<div style="margin-top:6px;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:8px 12px;background:var(--bg-panel);">';
+        v.forEach(function(item, idx) {
+          html += '<div style="display:flex;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-color);font-size:13px;">';
+          html += '<span style="color:var(--text-tertiary);font-size:11px;font-family:var(--font-mono);min-width:28px;text-align:right;user-select:none;">' + (idx + 1) + '.</span>';
+          html += '<span style="color:var(--text-primary);">' + escapeHtml(String(item)) + '</span>';
+          html += '</div>';
+        });
+        html += '</div></div>';
       } else {
         html += '<div class="data-item" style="grid-column:1/-1;"><span class="data-label">&lt;' + escapeHtml(k) + '&gt; (' + v.length + ' itens)</span>';
         v.forEach(function(subItem, subIdx) {
